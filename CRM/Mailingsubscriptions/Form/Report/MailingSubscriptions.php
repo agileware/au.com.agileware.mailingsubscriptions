@@ -3,14 +3,7 @@ use CRM_Mailingsubscriptions_ExtensionUtil as E;
 
 class CRM_Mailingsubscriptions_Form_Report_MailingSubscriptions extends CRM_Report_Form {
 
-  protected $_addressField = FALSE;
-
-  protected $_emailField = FALSE;
-
-  protected $_summary = NULL;
-
-  protected $_customGroupExtends = array('');
-  protected $_customGroupGroupBy = FALSE; function __construct() {
+  public function __construct() {
     $this->_columns = array(
       'civicrm_contact' => array(
         'dao' => 'CRM_Contact_DAO_Contact',
@@ -24,29 +17,15 @@ class CRM_Mailingsubscriptions_Form_Report_MailingSubscriptions extends CRM_Repo
           'id' => array(
             'no_display' => TRUE,
             'required' => TRUE,
+            'default' => TRUE,
           ),
           'first_name' => array(
             'title' => E::ts('First Name'),
             'no_repeat' => TRUE,
           ),
-          'id' => array(
-            'no_display' => TRUE,
-            'required' => TRUE,
-          ),
           'last_name' => array(
             'title' => E::ts('Last Name'),
             'no_repeat' => TRUE,
-          ),
-          'id' => array(
-            'no_display' => TRUE,
-            'required' => TRUE,
-          ),
-        ),
-        'filters' => array(
-          'time_stamp' => array(
-            'title' => ts('Open Date'),
-            'operatorType' => CRM_Report_Form::OP_DATE,
-            'type' => CRM_Utils_Type::T_DATE,
           ),
         ),
         'grouping' => 'contact-fields',
@@ -67,16 +46,62 @@ class CRM_Mailingsubscriptions_Form_Report_MailingSubscriptions extends CRM_Repo
         'fields' => array('email' => NULL),
         'grouping' => 'contact-fields',
       ),
+      'civicrm_subscription_history' => array(
+        'dao' => 'CRM_Contact_DAO_SubscriptionHistory',
+        'fields' => array(
+          'date' => array(
+            'title' => ts('Subscription Date'),
+            'required' => TRUE,
+          ),
+        ),
+        'filters' => array(
+          'date' => array(
+            'title' => ts('Subscription Date'),
+            'operatorType' => CRM_Report_Form::OP_DATE,
+            'type' => CRM_Utils_Type::T_DATE,
+          ),
+          'status' => array(
+            'title' => ts('Subscription Status'),
+            'operatorType' => CRM_Report_Form::OP_SELECT,
+            'type' => CRM_Utils_Type::T_STRING,
+            'options' => array('Added' => ts('Subscribed'), 'Removed' => ts('Unsubscribed'), 'Deleted' => ts('Deleted')),
+          ),
+        ),
+        'order_bys' => array(
+          'date' => array(
+            'title' => ts('Subscription Date'),
+            'name' => 'date',
+            'default_weight' => '1',
+            'default_order' => 'DESC',
+          ),
+        ),
+        'grouping' => 'subscription-fields',
+      ),
+      'civicrm_group' => array(
+        'dao' => 'CRM_Contact_DAO_Group',
+        'fields' => array(
+          'title' => array(
+            'title' => ts('Group Name'),
+            'required' => TRUE,
+          ),
+          'id' => array(
+            'title' => ts('Group Id'),
+            'no_display' => TRUE,
+            'required' => TRUE,
+          ),
+        ),
+        'grouping' => 'group-fields',
+      ),
     );
     parent::__construct();
   }
 
-  function preProcess() {
-    $this->assign('reportTitle', E::ts('Membership Detail Report'));
+  public function preProcess() {
+    $this->assign('reportTitle', E::ts('Mailing Subscriptions Report'));
     parent::preProcess();
   }
 
-  function select() {
+  public function select() {
     $select = $this->_columnHeaders = array();
 
     foreach ($this->_columns as $tableName => $table) {
@@ -102,12 +127,15 @@ class CRM_Mailingsubscriptions_Form_Report_MailingSubscriptions extends CRM_Repo
     $this->_select = "SELECT " . implode(', ', $select) . " ";
   }
 
-  function from() {
+  public function from() {
     $this->_from = NULL;
 
     $this->_from = "
-         FROM  civicrm_contact {$this->_aliases['civicrm_contact']} {$this->_aclFrom}";
-
+         FROM  civicrm_contact {$this->_aliases['civicrm_contact']} {$this->_aclFrom} 
+         JOIN civicrm_subscription_history {$this->_aliases['civicrm_subscription_history']} ON 
+                {$this->_aliases['civicrm_subscription_history']}.contact_id = {$this->_aliases['civicrm_contact']}.id
+         JOIN civicrm_group {$this->_aliases['civicrm_group']} ON 
+                {$this->_aliases['civicrm_group']}.id = {$this->_aliases['civicrm_subscription_history']}.group_id";
 
     //used when address field is selected
     if ($this->_addressField) {
@@ -127,7 +155,7 @@ class CRM_Mailingsubscriptions_Form_Report_MailingSubscriptions extends CRM_Repo
     }
   }
 
-  function where() {
+  public function where() {
     $clauses = array();
     foreach ($this->_columns as $tableName => $table) {
       if (array_key_exists('filters', $table)) {
@@ -159,6 +187,20 @@ class CRM_Mailingsubscriptions_Form_Report_MailingSubscriptions extends CRM_Repo
       }
     }
 
+    $mailingGroupOptionValue = civicrm_api3('OptionValue', 'getsingle', array(
+        'sequential' => 1,
+        'option_group_id' => "group_type",
+        'return' => 'value',
+        'name' => "Mailing List",
+    ));
+
+    $mailingGroupOptionValue = $mailingGroupOptionValue["value"];
+    $groupTypeField = array(
+      'dbAlias' => "{$this->_aliases['civicrm_group']}.group_type",
+      'type'    => CRM_Utils_Type::T_STRING,
+    );
+    $clauses[] = $this->whereClause($groupTypeField, 'has', $mailingGroupOptionValue, NULL, NULL);
+
     if (empty($clauses)) {
       $this->_where = "WHERE ( 1 ) ";
     }
@@ -171,15 +213,15 @@ class CRM_Mailingsubscriptions_Form_Report_MailingSubscriptions extends CRM_Repo
     }
   }
 
-  function groupBy() {
+  public function groupBy() {
     $this->_groupBy = " GROUP BY {$this->_aliases['civicrm_contact']}.id";
   }
 
-  function orderBy() {
-    $this->_orderBy = " ORDER BY {$this->_aliases['civicrm_contact']}.sort_name, {$this->_aliases['civicrm_contact']}.id";
+  public function orderBy() {
+    parent::orderBy();
   }
 
-  function postProcess() {
+  public function postProcess() {
 
     $this->beginPostProcess();
 
@@ -195,7 +237,7 @@ class CRM_Mailingsubscriptions_Form_Report_MailingSubscriptions extends CRM_Repo
     $this->endPostProcess($rows);
   }
 
-  function alterDisplay(&$rows) {
+  public function alterDisplay(&$rows) {
     // custom code to alter rows
     $entryFound = FALSE;
     $checkList = array();
@@ -243,13 +285,12 @@ class CRM_Mailingsubscriptions_Form_Report_MailingSubscriptions extends CRM_Repo
         );
         $rows[$rowNum]['civicrm_contact_sort_name_link'] = $url;
         $rows[$rowNum]['civicrm_contact_sort_name_hover'] = E::ts("View Contact Summary for this Contact.");
+
         $entryFound = TRUE;
       }
 
-      if (!$entryFound) {
-        break;
-      }
     }
+
   }
 
 }

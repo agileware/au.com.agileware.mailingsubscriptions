@@ -1,1 +1,0 @@
-DROP TABLE IF EXISTS `civicrm_group_contacts_log`;

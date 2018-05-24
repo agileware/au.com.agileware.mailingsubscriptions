@@ -122,23 +122,3 @@ function mailingsubscriptions_civicrm_angularModules(&$angularModules) {
 function mailingsubscriptions_civicrm_alterSettingsFolders(&$metaDataFolders = NULL) {
   _mailingsubscriptions_civix_civicrm_alterSettingsFolders($metaDataFolders);
 }
-
-/**
- * Implements hook_civicrm_post().
- * @param $op
- * @param $objectName
- * @param $objectId
- * @param $objectRef
- */
-function mailingsubscriptions_civicrm_post($op, $objectName, $objectId, &$objectRef) {
-    if($objectName == "GroupContact") {
-      $contactid = $objectRef[0];
-      if($op == "delete" || $op == "create") {
-        civicrm_api3('GroupContactsLog', 'create', array(
-            'groupid'   => $objectId,
-            'contactid' => $contactid,
-            'action'    => $op,
-        ));
-      }
-    }
-}
