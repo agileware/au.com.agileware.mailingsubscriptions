@@ -214,7 +214,7 @@ class CRM_Mailingsubscriptions_Form_Report_MailingSubscriptions extends CRM_Repo
   }
 
   public function groupBy() {
-    $this->_groupBy = " GROUP BY {$this->_aliases['civicrm_contact']}.id";
+
   }
 
   public function orderBy() {
