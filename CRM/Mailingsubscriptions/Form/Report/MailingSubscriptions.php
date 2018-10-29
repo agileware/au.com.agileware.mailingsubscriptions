@@ -96,6 +96,19 @@ class CRM_Mailingsubscriptions_Form_Report_MailingSubscriptions extends CRM_Repo
     $this->_groupFilter = TRUE;
     $this->_tagFilter = TRUE;
     parent::__construct();
+
+    $this->_columns['civicrm_group']['filters']['gid']['title'] = ts('Contact Group');
+    $this->_columns['civicrm_group']['filters']['mailing_group'] = array(
+      'name' => 'id',
+      'title' => ts('Mailing Group'),
+      'operatorType' => CRM_Report_Form::OP_ENTITYREF,
+      'type' => CRM_Utils_Type::T_INT,
+      'attributes' => array(
+        'entity' => 'group',
+        'select' => array('minimumInputLength' => 0),
+        'api' => array('params' => array('group_type' => ['LIKE' => "%2%"])),
+      ),
+    );
   }
 
   public function preProcess() {
