@@ -93,6 +93,8 @@ class CRM_Mailingsubscriptions_Form_Report_MailingSubscriptions extends CRM_Repo
         'grouping' => 'group-fields',
       ),
     );
+    $this->_groupFilter = TRUE;
+    $this->_tagFilter = TRUE;
     parent::__construct();
   }
 
