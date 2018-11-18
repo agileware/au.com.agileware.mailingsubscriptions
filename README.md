@@ -3,7 +3,7 @@ README
 
 **Mailing Subscriptions Report** extension for CiviCRM
 
-CiviCRM extension which provides a new CiviCRM report, Mailing Subscriptions. This reports how many new subscribers have been added to a Mailing List in CiviCRM within a period of time. Where a Mailing List is a CiviCRM Mailing Group equivalent to a "Newsletter" and the Contacts in the Group are the "subscribers". Additional filters are provided to filter by contact, groups and tags.
+CiviCRM extension which provides a new CiviCRM report, Mailing Subscriptions. This reports how many new subscribers have been added to a Mailing List in CiviCRM within a period of time. Where a Mailing List is a CiviCRM Mailing Group equivalent to a "newsletter" and the Contacts in the Group are the "subscribers". Additional filters are provided to filter by contact, groups and tags.
 
 Useful extension to answer simple questions like:
 
