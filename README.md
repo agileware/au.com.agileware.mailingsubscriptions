@@ -30,7 +30,7 @@ Installation
 About the Authors
 ------
 
-This CiviCRM extension was developed by [Agileware](https://agileware.com.au).
+This CiviCRM extension was developed by the team at [Agileware](https://agileware.com.au).
 
 [Agileware](https://agileware.com.au) provide a range of CiviCRM services including:
  - CiviCRM migration
