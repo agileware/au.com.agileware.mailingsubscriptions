@@ -2,23 +2,25 @@
 <extension key="au.com.agileware.mailingsubscriptions" type="module">
   <file>mailingsubscriptions</file>
   <name>Mailing Subscriptions</name>
-  <description>An extension to get report of new mailing subscribers</description>
+  <description>CiviCRM Extension which provides a new CiviCRM report, Mailing Subscriptions</description>
   <license>AGPL-3.0</license>
   <maintainer>
     <author>Agileware</author>
     <email>support@agileware.com.au</email>
   </maintainer>
   <urls>
-    <url desc="Main Extension Page">https://agileware.com.au</url>
-    <url desc="Documentation">https://agileware.com.au</url>
-    <url desc="Support">https://support.agileware.com.au</url>
+    <url desc="Main Extension Page">https://github.com/agileware/au.com.agileware.mailingsubscriptions</url>
+    <url desc="Documentation">https://github.com/agileware/au.com.agileware.mailingsubscriptions/blob/master/README.md</url>
+    <url desc="Support">https://agileware.com.au/contact</url>
     <url desc="Licensing">http://www.gnu.org/licenses/agpl-3.0.html</url>
   </urls>
   <releaseDate>2018-05-23</releaseDate>
-  <version>1.0</version>
-  <develStage>alpha</develStage>
+  <version>1.1</version>
+  <develStage>stable</develStage>
   <compatibility>
+    <ver>4.6</ver>
     <ver>4.7</ver>
+    <ver>5.0</ver>
   </compatibility>
   <civix>
     <namespace>CRM/Mailingsubscriptions</namespace>
