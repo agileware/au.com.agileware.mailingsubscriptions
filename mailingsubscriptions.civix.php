@@ -24,7 +24,7 @@ class CRM_Mailingsubscriptions_ExtensionUtil {
    *   Translated text.
    * @see ts
    */
-  public static function ts($text, $params = []) {
+  public static function ts($text, $params = []): string {
     if (!array_key_exists('domain', $params)) {
       $params['domain'] = [self::LONG_NAME, NULL];
     }
@@ -41,7 +41,7 @@ class CRM_Mailingsubscriptions_ExtensionUtil {
    *   Ex: 'http://example.org/sites/default/ext/org.example.foo'.
    *   Ex: 'http://example.org/sites/default/ext/org.example.foo/css/foo.css'.
    */
-  public static function url($file = NULL) {
+  public static function url($file = NULL): string {
     if ($file === NULL) {
       return rtrim(CRM_Core_Resources::singleton()->getUrl(self::LONG_NAME), '/');
     }
@@ -75,9 +75,46 @@ class CRM_Mailingsubscriptions_ExtensionUtil {
     return self::CLASS_PREFIX . '_' . str_replace('\\', '_', $suffix);
   }
 
+  /**
+   * @return \CiviMix\Schema\SchemaHelperInterface
+   */
+  public static function schema() {
+    if (!isset($GLOBALS['CiviMixSchema'])) {
+      pathload()->loadPackage('civimix-schema@5', TRUE);
+    }
+    return $GLOBALS['CiviMixSchema']->getHelper(static::LONG_NAME);
+  }
+
 }
 
 use CRM_Mailingsubscriptions_ExtensionUtil as E;
+
+($GLOBALS['_PathLoad'][0] ?? require __DIR__ . '/mixin/lib/pathload-0.php');
+pathload()->addSearchDir(__DIR__ . '/mixin/lib');
+spl_autoload_register('_mailingsubscriptions_civix_class_loader', TRUE, TRUE);
+
+function _mailingsubscriptions_civix_class_loader($class) {
+  if ($class === 'CRM_Mailingsubscriptions_DAO_Base') {
+    if (version_compare(CRM_Utils_System::version(), '5.74.beta', '>=')) {
+      class_alias('CRM_Core_DAO_Base', 'CRM_Mailingsubscriptions_DAO_Base');
+      // ^^ Materialize concrete names -- encourage IDE's to pick up on this association.
+    }
+    else {
+      $realClass = 'CiviMix\\Schema\\Mailingsubscriptions\\DAO';
+      class_alias($realClass, $class);
+      // ^^ Abstract names -- discourage IDE's from picking up on this association.
+    }
+    return;
+  }
+
+  // This allows us to tap-in to the installation process (without incurring real file-reads on typical requests).
+  if (strpos($class, 'CiviMix\\Schema\\Mailingsubscriptions\\') === 0) {
+    // civimix-schema@5 is designed for backported use in download/activation workflows,
+    // where new revisions may become dynamically available.
+    pathload()->loadPackage('civimix-schema@5', TRUE);
+    CiviMix\Schema\loadClass($class);
+  }
+}
 
 function _mailingsubscriptions_civix_mixin_polyfill() {
   if (!class_exists('CRM_Extension_MixInfo')) {
@@ -91,25 +128,14 @@ function _mailingsubscriptions_civix_mixin_polyfill() {
  *
  * @link https://docs.civicrm.org/dev/en/latest/hooks/hook_civicrm_config
  */
-function _mailingsubscriptions_civix_civicrm_config(&$config = NULL) {
+function _mailingsubscriptions_civix_civicrm_config($config = NULL) {
   static $configured = FALSE;
   if ($configured) {
     return;
   }
   $configured = TRUE;
 
-  $template = CRM_Core_Smarty::singleton();
-
   $extRoot = __DIR__ . DIRECTORY_SEPARATOR;
-  $extDir = $extRoot . 'templates';
-
-  if (is_array($template->template_dir)) {
-    array_unshift($template->template_dir, $extDir);
-  }
-  else {
-    $template->template_dir = [$extDir, $template->template_dir];
-  }
-
   $include_path = $extRoot . PATH_SEPARATOR . get_include_path();
   set_include_path($include_path);
   _mailingsubscriptions_civix_mixin_polyfill();
@@ -122,36 +148,7 @@ function _mailingsubscriptions_civix_civicrm_config(&$config = NULL) {
  */
 function _mailingsubscriptions_civix_civicrm_install() {
   _mailingsubscriptions_civix_civicrm_config();
-  if ($upgrader = _mailingsubscriptions_civix_upgrader()) {
-    $upgrader->onInstall();
-  }
   _mailingsubscriptions_civix_mixin_polyfill();
-}
-
-/**
- * Implements hook_civicrm_postInstall().
- *
- * @link https://docs.civicrm.org/dev/en/latest/hooks/hook_civicrm_postInstall
- */
-function _mailingsubscriptions_civix_civicrm_postInstall() {
-  _mailingsubscriptions_civix_civicrm_config();
-  if ($upgrader = _mailingsubscriptions_civix_upgrader()) {
-    if (is_callable([$upgrader, 'onPostInstall'])) {
-      $upgrader->onPostInstall();
-    }
-  }
-}
-
-/**
- * Implements hook_civicrm_uninstall().
- *
- * @link https://docs.civicrm.org/dev/en/latest/hooks/hook_civicrm_uninstall
- */
-function _mailingsubscriptions_civix_civicrm_uninstall() {
-  _mailingsubscriptions_civix_civicrm_config();
-  if ($upgrader = _mailingsubscriptions_civix_upgrader()) {
-    $upgrader->onUninstall();
-  }
 }
 
 /**
@@ -159,59 +156,9 @@ function _mailingsubscriptions_civix_civicrm_uninstall() {
  *
  * @link https://docs.civicrm.org/dev/en/latest/hooks/hook_civicrm_enable
  */
-function _mailingsubscriptions_civix_civicrm_enable() {
+function _mailingsubscriptions_civix_civicrm_enable(): void {
   _mailingsubscriptions_civix_civicrm_config();
-  if ($upgrader = _mailingsubscriptions_civix_upgrader()) {
-    if (is_callable([$upgrader, 'onEnable'])) {
-      $upgrader->onEnable();
-    }
-  }
   _mailingsubscriptions_civix_mixin_polyfill();
-}
-
-/**
- * (Delegated) Implements hook_civicrm_disable().
- *
- * @link https://docs.civicrm.org/dev/en/latest/hooks/hook_civicrm_disable
- * @return mixed
- */
-function _mailingsubscriptions_civix_civicrm_disable() {
-  _mailingsubscriptions_civix_civicrm_config();
-  if ($upgrader = _mailingsubscriptions_civix_upgrader()) {
-    if (is_callable([$upgrader, 'onDisable'])) {
-      $upgrader->onDisable();
-    }
-  }
-}
-
-/**
- * (Delegated) Implements hook_civicrm_upgrade().
- *
- * @param $op string, the type of operation being performed; 'check' or 'enqueue'
- * @param $queue CRM_Queue_Queue, (for 'enqueue') the modifiable list of pending up upgrade tasks
- *
- * @return mixed
- *   based on op. for 'check', returns array(boolean) (TRUE if upgrades are pending)
- *   for 'enqueue', returns void
- *
- * @link https://docs.civicrm.org/dev/en/latest/hooks/hook_civicrm_upgrade
- */
-function _mailingsubscriptions_civix_civicrm_upgrade($op, CRM_Queue_Queue $queue = NULL) {
-  if ($upgrader = _mailingsubscriptions_civix_upgrader()) {
-    return $upgrader->onUpgrade($op, $queue);
-  }
-}
-
-/**
- * @return CRM_Mailingsubscriptions_Upgrader
- */
-function _mailingsubscriptions_civix_upgrader() {
-  if (!file_exists(__DIR__ . '/CRM/Mailingsubscriptions/Upgrader.php')) {
-    return NULL;
-  }
-  else {
-    return CRM_Mailingsubscriptions_Upgrader_Base::instance();
-  }
 }
 
 /**
@@ -230,8 +177,8 @@ function _mailingsubscriptions_civix_insert_navigation_menu(&$menu, $path, $item
   if (empty($path)) {
     $menu[] = [
       'attributes' => array_merge([
-        'label'      => CRM_Utils_Array::value('name', $item),
-        'active'     => 1,
+        'label' => $item['name'] ?? NULL,
+        'active' => 1,
       ], $item),
     ];
     return TRUE;
@@ -294,15 +241,4 @@ function _mailingsubscriptions_civix_fixNavigationMenuItems(&$nodes, &$maxNavID,
       _mailingsubscriptions_civix_fixNavigationMenuItems($nodes[$origKey]['child'], $maxNavID, $nodes[$origKey]['attributes']['navID']);
     }
   }
-}
-
-/**
- * (Delegated) Implements hook_civicrm_entityTypes().
- *
- * Find any *.entityType.php files, merge their content, and return.
- *
- * @link https://docs.civicrm.org/dev/en/latest/hooks/hook_civicrm_entityTypes
- */
-function _mailingsubscriptions_civix_civicrm_entityTypes(&$entityTypes) {
-  $entityTypes = array_merge($entityTypes, []);
 }
